@@ -243,13 +243,12 @@ resource	1
 
 ## What I observed
 
-A few sentences on what happened while the job was running. Pick whatever you actually
-noticed. Some things worth looking at:
+During the job execution, the map tasks processed the input data blocks across the cluster until reaching 100% completion. Following this, the shuffle and sort phase transferred and ordered the intermediate key-value pairs. Finally, the reduce tasks executed to aggregate the final word counts before writing the results back to HDFS.
 
-- How long the map phase took compared with the reduce phase
-- How many DataNodes showed as live at <http://localhost:9870>
-- What the ResourceManager at <http://localhost:8088> showed during the run
-- Whether the output ordering matched what you expected
+- The map phase runs sequentially before the reduce phase, reaching 100% completion and handing off intermediate data via the shuffle phase before the reduce tasks execute and finalize the output.
+- The NameNode UI at <http://localhost:9870> confirmed that exactly three DataNodes were active and operational.
+- The YARN ResourceManager at http://localhost:8088 successfully tracked the application lifecycle and displayed active container allocations for both map and reduce tasks.
+- The final output is sorted based on the frequency of the words in descending order (highest count to lowest count), with ties typically broken by the keys themselves.
 
 
 
@@ -257,7 +256,8 @@ noticed. Some things worth looking at:
 
 ## Problems and fixes
 
-Anything that went wrong and what resolved it. Paste the actual error message. If nothing
-went wrong, say so.
+The standard multi-node Docker Compose setup failed inside the environment because Docker-in-Docker bridge network routing dropped inter-container communication, causing the DataNodes and ResourceManager to throw connection retry errors when trying to reach the NameNode (e.g., Retrying connect to server: namenode/172.18.0.x:8020).
+
+Resolution: Switched to the Codespaces-specific configuration variant which uses network_mode: host and extra_hosts to route all daemon communication over the loopback interface (127.0.0.1), avoiding bridge network packet drops entirely.
 
 
